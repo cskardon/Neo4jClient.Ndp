@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using FluentAssertions;
-using Neo4jNdpClient;
-using Xunit;
-using Xunit.Sdk;
-
-namespace Neo4j.Binary.Tests
+﻿namespace Neo4j.Binary.Tests
 {
+    using System.Collections.Generic;
+    using System.Linq;
+    using FluentAssertions;
+    using Neo4jNdpClient;
+    using Xunit;
+
     public class ListPackerTests
     {
         public class GetMarkerMethod
@@ -71,7 +70,7 @@ namespace Neo4j.Binary.Tests
             public void UnpacksStringsCorrectly(string expected, byte[] input)
             {
                 var expectedList = new List<string> {expected};
-                
+
                 var response = Packers.List.Unpack<string>(input);
                 response.Should().Equal(expectedList);
             }
@@ -85,7 +84,7 @@ namespace Neo4j.Binary.Tests
                 for (var i = 0; i < count; i++)
                     expectedList.Add("a");
 
-                
+
                 var response = Packers.List.Unpack<string>(input);
                 response.Should().Equal(expectedList);
             }
@@ -96,8 +95,9 @@ namespace Neo4j.Binary.Tests
                 var input = new byte[] {0x92, 0x8B, 0x43, 0x6C, 0x6F, 0x75, 0x64, 0x20, 0x41, 0x74, 0x6C, 0x61, 0x73, 0xC9, 0x07, 0xDC}; //Cloud Atlas | 2012
                 var expectedList = new List<dynamic> {"Cloud Atlas", 2012};
 
-                var response = Packers.List.Unpack<dynamic>(input);
-                response.Should().Equal(expectedList);
+                var response = Packers.List.Unpack<dynamic>(input).ToList();
+                ((bool) (response.First() == expectedList.First())).Should().BeTrue();
+                ((bool) (response.Skip(1).First() == expectedList.Skip(1).First())).Should().BeTrue();
             }
         }
 
@@ -109,7 +109,7 @@ namespace Neo4j.Binary.Tests
             public void PacksStringsCorrectly(string inputString, byte[] expected)
             {
                 var input = new List<string> {inputString};
-                
+
                 var response = Packers.List.Pack(input);
 
                 response.Should().Equal(expected);
@@ -119,7 +119,7 @@ namespace Neo4j.Binary.Tests
             public void PacksNullCorrectly()
             {
                 var input = new List<bool?> {null};
-                
+
                 var response = Packers.List.Pack(input);
 
                 var expected = new byte[] {0x91, 0xC0};
@@ -132,7 +132,7 @@ namespace Neo4j.Binary.Tests
             public void PacksBoolCorrectly(bool inputBool, byte[] expected)
             {
                 var input = new List<bool> {inputBool};
-                
+
                 var response = Packers.List.Pack(input);
 
                 response.Should().Equal(expected);
@@ -144,7 +144,7 @@ namespace Neo4j.Binary.Tests
             public void PacksNullableBoolCorrectly(bool? inputBool, byte[] expected)
             {
                 var input = new List<bool?> {inputBool};
-                
+
                 var response = Packers.List.Pack(input);
 
                 response.Should().Equal(expected);
@@ -156,7 +156,7 @@ namespace Neo4j.Binary.Tests
             public void PacksFloatsCorrectly(double d, byte[] expected)
             {
                 var input = new List<double> {d};
-                
+
                 var response = Packers.List.Pack(input);
 
                 response.Should().Equal(expected);
@@ -179,7 +179,7 @@ namespace Neo4j.Binary.Tests
 
                 var expected = new byte[] {0x91, 0xA1, 0x82, 0x61, 0x30, 0x82, 0x61, 0x30};
 
-                
+
                 var actual = Packers.List.Pack(input);
                 actual.Should().Equal(expected);
             }
@@ -191,7 +191,7 @@ namespace Neo4j.Binary.Tests
             public void PacksPositiveIntsCorrectly(int i, byte[] expected)
             {
                 var input = new List<int> {i};
-                
+
                 var response = Packers.List.Pack(input);
 
                 response.Should().Equal(expected);
@@ -204,7 +204,7 @@ namespace Neo4j.Binary.Tests
             public void PacksNegativeIntsCorrectly(int i, byte[] expected)
             {
                 var input = new List<int> {i};
-                
+
                 var response = Packers.List.Pack(input);
 
                 response.Should().Equal(expected);
@@ -226,7 +226,7 @@ namespace Neo4j.Binary.Tests
             public void PacksDynamicCorrectly(dynamic element, byte[] expected)
             {
                 var input = new List<dynamic> {element};
-                
+
                 var response = Packers.List.Pack(input);
 
                 response.Should().Equal(expected);
