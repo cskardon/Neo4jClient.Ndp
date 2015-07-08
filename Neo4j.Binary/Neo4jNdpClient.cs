@@ -8,6 +8,21 @@ using System.Text;
 
 namespace Neo4jNdpClient
 {
+    public enum Neo4jStructures
+    {
+        /// <summary>Represents 'N'</summary>
+        Node = 0x4E,
+        /// <summary>Represents 'R'</summary>
+        Relationship = 0x52,
+        /// <summary>Represents 'P'</summary>
+        Path = 0x50
+    }
+
+    public class Node
+    {
+        
+    }
+
     public class Neo4jNdpClient : IDisposable
     {
         private const string UserAgent = "Neo4jNdpNetClient/0.1";

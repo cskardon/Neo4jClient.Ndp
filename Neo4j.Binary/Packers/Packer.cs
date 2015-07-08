@@ -1,14 +1,9 @@
-using System.Collections;
-using System.Runtime.CompilerServices;
-
 namespace Neo4jNdpClient
 {
     using System;
     using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
-    using System.Text;
-    using System.Xml.Schema;
 
     /*
         PackStream
@@ -300,8 +295,7 @@ namespace Neo4jNdpClient
         Float,
         List,
         Boolean,
-        Null,
-        
+        Null
     }
 
     public static class Packer
@@ -338,10 +332,10 @@ namespace Neo4jNdpClient
 //            }
 //        }
 
-        public static T Unpack<T>(byte[] content) where T:new()
+        public static T Unpack<T>(byte[] content) where T : new()
         {
             var packedEntities = GetPackedEntities(content);
-            if(packedEntities.Length != 1)
+            if (packedEntities.Length != 1)
                 throw new ArgumentException("Too many / or no entities", nameof(content));
 
             var entity = packedEntities.First();
@@ -399,15 +393,15 @@ namespace Neo4jNdpClient
                 entityType = GetTypeAndSize(editable, out size);
             }
             return output.ToArray();
-        } 
+        }
 
         public static PackType GetTypeAndSize(byte[] content, out int size)
         {
-            PackType type = PackType.Unknown;
+            var type = PackType.Unknown;
             size = -1;
             if (content == null || content.Length == 0)
                 return type;
-          
+
             if (Packers.Text.Is(content))
             {
                 type = PackType.Text;
@@ -430,38 +424,36 @@ namespace Neo4jNdpClient
                 //Not the size, but number of fields.
                 //in this case (and others??) size = content up to 0x00 0x00??
                 size = content.Length;
-//                size = Packers.Map.GetExpectedSize(content) + Packers.Map.SizeOfMarkerInBytes(content);
             }
             if (Packers.List.IsUnpackable(content))
             {
                 type = PackType.List;
                 size = content.Length;
             }
+            if (Packers.Struct.IsStruct(content))
+            {
+                type = PackType.Structure;
+                size = content.Length;
+            }
 
             return type;
         }
 
-//        private static long GetSize(byte[] size)
-//        {
-//            return int.Parse(BitConverter.ToString(size).Replace("-", ""), NumberStyles.HexNumber);
-//        }
-
-
         public static byte[] GetLength(long length)
         {
             if (length <= 0xFF)
-                return new[] { (byte)length };
+                return new[] {(byte) length};
 
             if (length > 0xFFFFFF)
                 throw new ArgumentOutOfRangeException(nameof(length), length, "Length given is too big.");
 
-            return Packer.ConvertSizeToBytes(length);
+            return ConvertSizeToBytes(length);
         }
 
         public static byte[] Pack<T>(T toPack, bool addZeroEnding = false)
         {
             if (toPack == null)
-                return new[] {(byte)Markers.Null};
+                return new[] {(byte) Markers.Null};
 
             var underlyingType = Nullable.GetUnderlyingType(toPack.GetType()) ?? toPack.GetType();
 
@@ -472,16 +464,16 @@ namespace Neo4jNdpClient
             else if (underlyingType == typeof (bool))
                 output = Packers.Bool.Pack(Convert.ToBoolean(toPack));
 
-            else if (underlyingType == typeof(string))
+            else if (underlyingType == typeof (string))
                 output = Packers.Text.Pack(toPack as string);
 
-            else if (underlyingType == typeof (long) || underlyingType == typeof(int) || underlyingType==typeof(short) || underlyingType == typeof(sbyte))
+            else if (underlyingType == typeof (long) || underlyingType == typeof (int) || underlyingType == typeof (short) || underlyingType == typeof (sbyte))
                 output = Packers.Int.Pack(Convert.ToInt64(toPack));
 
             else if (underlyingType == typeof (float) || underlyingType == typeof (double) || underlyingType == typeof (decimal))
                 output = Packers.Double.Pack(Convert.ToDouble(toPack));
 
-            else if(Packers.List.IsPackable(underlyingType))
+            else if (Packers.List.IsPackable(underlyingType))
             {
                 Type genericParameter;
                 Packers.List.IsEnumerable(underlyingType, out genericParameter);
@@ -518,20 +510,20 @@ namespace Neo4jNdpClient
         public static byte[] ConvertSizeToBytes(long length, int? size = null)
         {
             var hexValue = length.ToString("X");
-            if (hexValue.Length % 2 != 0)
+            if (hexValue.Length%2 != 0)
                 hexValue = hexValue.PadLeft(hexValue.Length + 1, '0');
 
             var output = new List<byte>();
 
-            for (int i = 0; i < hexValue.Length; i += 2)
-                output.Add((byte)int.Parse(string.Concat(hexValue[i], hexValue[i + 1]), NumberStyles.HexNumber));
+            for (var i = 0; i < hexValue.Length; i += 2)
+                output.Add((byte) int.Parse(string.Concat(hexValue[i], hexValue[i + 1]), NumberStyles.HexNumber));
 
             if (size != null && size > 0)
             {
                 var toAdd = output.Count%(size*2);
-                if(toAdd > 0)
-                    for(int i = 0; i < toAdd; i++)
-                        output.Insert(0,0x0);
+                if (toAdd > 0)
+                    for (var i = 0; i < toAdd; i++)
+                        output.Insert(0, 0x0);
             }
 
             return output.ToArray();
