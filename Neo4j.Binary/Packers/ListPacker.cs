@@ -81,27 +81,7 @@ namespace Neo4jNdpClient
                 return true;
             }
 
-            internal static byte[] GetMarker(long itemsInList)
-            {
-                if (itemsInList <= 15)
-                    return new[] {(byte) (0x90 + itemsInList)};
-
-                var output = new List<byte>();
-                if (itemsInList <= 0xFF)
-                    output.Add(0xD4);
-
-                else if (itemsInList <= 0xFFFF)
-                    output.Add(0xD5);
-
-                else if (itemsInList <= uint.MaxValue)
-                    output.Add(0xD6);
-
-                if (itemsInList > uint.MaxValue)
-                    throw new ArgumentOutOfRangeException(nameof(itemsInList), itemsInList, "Too many items in the list!");
-
-                output.AddRange(Packer.ConvertSizeToBytes(itemsInList));
-                return output.ToArray();
-            }
+            
 
             public static byte[] Pack<T>(IEnumerable<T> content)
             {
@@ -131,8 +111,28 @@ namespace Neo4jNdpClient
 
                 throw new ArgumentException("Unknown marker", nameof(content));
             }
+            internal static byte[] GetMarker(long itemsInList)
+            {
+                if (itemsInList <= 15)
+                    return new[] { (byte)(0x90 + itemsInList) };
 
-            private static int GetBytesToSkip(long numberOfElements)
+                var output = new List<byte>();
+                if (itemsInList <= 0xFF)
+                    output.Add(0xD4);
+
+                else if (itemsInList <= 0xFFFF)
+                    output.Add(0xD5);
+
+                else if (itemsInList <= uint.MaxValue)
+                    output.Add(0xD6);
+
+                if (itemsInList > uint.MaxValue)
+                    throw new ArgumentOutOfRangeException(nameof(itemsInList), itemsInList, "Too many items in the list!");
+
+                output.AddRange(Packer.ConvertSizeToBytes(itemsInList));
+                return output.ToArray();
+            }
+            private static int GetSizeOfMarkerInBytes(long numberOfElements)
             {
                 if (numberOfElements <= 15)
                     return 1;
@@ -151,11 +151,33 @@ namespace Neo4jNdpClient
                     throw new ArgumentException("Not a list.", nameof(content));
 
                 var numberOfElements = GetNumberOfElements(content);
-                var bytesToSkip = GetBytesToSkip(numberOfElements);
+                var bytesToSkip = GetSizeOfMarkerInBytes(numberOfElements);
 
                 var unpacked = Packer.Unpack(content.Skip(bytesToSkip).ToArray());
                 return unpacked.Cast<T>();
             }
+
+            public static int GetLengthInBytes(byte[] bytes, bool includeMarkerSize)
+            {
+                var numberOfElements = GetNumberOfElements(bytes);
+                var markerSize = GetSizeOfMarkerInBytes(numberOfElements);
+
+                int length = 0;
+                if (includeMarkerSize) length += markerSize;
+
+                var bytesWithoutMarker = bytes.Skip(markerSize).ToArray();
+
+                for (int i = 0; i < numberOfElements; i++)
+                {
+                    var itemLength = Packer.GetLengthOfFirstItem(bytesWithoutMarker);
+                    bytesWithoutMarker = bytesWithoutMarker.Skip(itemLength).ToArray();
+                    length += itemLength;
+                }
+                
+                return length;
+            }
+
+
         }
     }
 }

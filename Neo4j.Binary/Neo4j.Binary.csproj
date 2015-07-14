@@ -63,6 +63,8 @@
     <Compile Include="NdpIgnoreAttribute.cs" />
     <Compile Include="Neo4jNdpClient.cs" />
     <Compile Include="Neo4jRecord.cs" />
+    <Compile Include="Packers\Neo4jStruct.cs" />
+    <Compile Include="Packers\Node.cs" />
     <Compile Include="Packers\ObjectPacker.cs" />
     <Compile Include="Packed.cs" />
     <Compile Include="Packers\Packer.cs" />
@@ -73,6 +75,7 @@
     <Compile Include="SignatureBytes.cs" />
     <Compile Include="Packers\StringPacker.cs" />
     <Compile Include="Packers\StructPacker.cs" />
+    <Compile Include="Stream\Neo4jStream.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

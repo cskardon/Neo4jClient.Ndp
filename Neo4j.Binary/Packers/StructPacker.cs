@@ -1,12 +1,8 @@
-using System.CodeDom;
-using System.Globalization;
-
 namespace Neo4jNdpClient
 {
     using System;
-    using System.Collections.Generic;
+    using System.Globalization;
     using System.Linq;
-    using System.Reflection;
 
     /*
       Structures
@@ -44,7 +40,6 @@ namespace Neo4jNdpClient
      */
 
 
-
     public interface IPacker
     {
         byte[] Pack<T>(T content);
@@ -53,51 +48,10 @@ namespace Neo4jNdpClient
     public interface IUnpacker
     {
         T Unpack<T>(byte[] content) where T : new();
+        int GetSizeInBytes(byte[] content, bool includeMarker = true);
+        bool IsUnpackable(byte[] content);
     }
 
-
-    public class Neo4jStruct
-    {
-        private readonly byte[] _originalBytes;
-        private int _numberOfFields;
-
-        public int NumberOfFields
-        {
-            get { return _numberOfFields; }
-            set
-            {
-                if(_originalBytes == null)
-                    throw new InvalidOperationException("No fields can be set without original bytes!");
-                if(value < 0)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "Number of fields must be a positive number.");
-
-                _numberOfFields = value;
-                if (NumberOfFields <= 15)
-                    ContentWithoutStructAndSignature = _originalBytes.Skip(2).ToArray();
-                else if (NumberOfFields >= 16 && NumberOfFields <= 255)
-                    ContentWithoutStructAndSignature = _originalBytes.Skip(3).ToArray();
-                else if (NumberOfFields >= 256 && NumberOfFields <= 65535)
-                    ContentWithoutStructAndSignature = _originalBytes.Skip(4).ToArray();
-            }
-        }
-
-        public byte[] ContentWithoutStructAndSignature { get; private set; }
-
-        public SignatureBytes SignatureByte { get; set; }
-
-        public Neo4jStruct(byte[] originalBytes)
-        {
-            _originalBytes = originalBytes;
-        }
-        
-
-        public override string ToString()
-        {
-            if(_originalBytes != null && _originalBytes.Length >=0 )
-                return BitConverter.ToString(_originalBytes);
-            return "No original bytes to convert";
-        }
-    }
 
     public static partial class Packers
     {
@@ -119,6 +73,7 @@ namespace Neo4jNdpClient
 
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes[0], "Unknown Marker");
             }
+
             public static bool IsStruct(byte[] content)
             {
                 return (content[0] >= 0xB0 && content[0] <= 0xBF) || content[0] == 0xDC || content[0] == 0xDD;
@@ -138,14 +93,49 @@ namespace Neo4jNdpClient
 
             private static SignatureBytes GetSignatureByte(byte[] content, int numberOfFields)
             {
-                int skip = 1;
+                var skip = 1;
                 if (numberOfFields >= 16 && numberOfFields <= 255)
                     skip = 2;
-                if (numberOfFields >= 256 && numberOfFields <= 65535) 
+                if (numberOfFields >= 256 && numberOfFields <= 65535)
                     skip = 3;
 
                 var signatureBytes = content.Skip(skip).Take(1).Single();
                 return (SignatureBytes) signatureBytes;
+            }
+
+            private static int GetSizeOfMarkerInBytes(int numberOfFields)
+            {
+                if (numberOfFields >= 16 && numberOfFields <= 255)
+                    return 2;
+                if (numberOfFields >= 256 && numberOfFields <= 65535)
+                    return 3;
+                return 1;
+            }
+
+            public static int GetNumberOfItems(byte[] content)
+            {
+                return GetNumberOfFields(content);
+            }
+
+            public static int GetExpectedSizeInBytes(byte[] content, bool includeMarkerSize = true)
+            {
+                var numberOfElements = GetNumberOfItems(content);
+                var markerSize = GetSizeOfMarkerInBytes(numberOfElements) + 1;
+                
+
+                int length = 0;
+                if (includeMarkerSize) length += markerSize;
+
+                var bytesWithoutMarker = content.Skip(markerSize).ToArray();
+
+                for (int i = 0; i < numberOfElements; i++)
+                {
+                    var itemLength = Packer.GetLengthOfFirstItem(bytesWithoutMarker);
+                    bytesWithoutMarker = bytesWithoutMarker.Skip(itemLength).ToArray();
+                    length += itemLength;
+                }
+
+                return length;
             }
         }
     }

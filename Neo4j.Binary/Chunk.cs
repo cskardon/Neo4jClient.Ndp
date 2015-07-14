@@ -20,8 +20,6 @@ namespace Neo4jNdpClient
 
         private static int GetSignature(byte[] content)
         {
-            var first = content[0];
-            //Parse first
             int signature = content[1];
             return signature;
         }

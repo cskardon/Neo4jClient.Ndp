@@ -275,6 +275,26 @@ namespace Neo4jNdpClient
 
                 return obj;
             }
+
+            public static int GetExpectedSizeInBytes(byte[] content, bool includeMarkerSize = true)
+            {
+                var numberOfElements = GetExpectedNumberOfFields(content);
+                var markerSize = SizeOfMarkerInBytes(content);
+
+                int length = 0;
+                if (includeMarkerSize) length += markerSize;
+
+                var bytesWithoutMarker = content.Skip(markerSize).ToArray();
+
+                for (int i = 0; i < numberOfElements; i++)
+                {
+                    var itemLength = Packer.GetLengthOfFirstItem(bytesWithoutMarker);
+                    bytesWithoutMarker = bytesWithoutMarker.Skip(itemLength).ToArray();
+                    length += itemLength;
+                }
+
+                return length;
+            }
         }
     }
 }

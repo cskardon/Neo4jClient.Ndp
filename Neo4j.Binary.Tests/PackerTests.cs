@@ -8,7 +8,7 @@ namespace Neo4j.Binary.Tests
     using Neo4jNdpClient;
     using Xunit;
 
-    public class PackerTests
+    public partial class PackerTests
     {
         public class ConvertSizeToBytesMethod
         {

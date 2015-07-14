@@ -237,5 +237,122 @@
                 public bool A { get; set; }
             }
         }
+
+        public class GetSizeInBytesMethod
+        {
+            [Fact]
+            public void ReturnsRightSizeForNoElements()
+            {
+                var bytes = new byte[] {0x90};
+                var withMarker = Packers.List.GetLengthInBytes(bytes, true);
+                withMarker.Should().Be(1);
+
+                var withoutMarker = Packers.List.GetLengthInBytes(bytes, false);
+                withoutMarker.Should().Be(0);
+            }
+
+            [Fact]
+            public void ReturnsRightSizeForSingleElement()
+            {
+                var bytes = new byte[] {0x91, 0x81, 0x61};
+                var withMarker = Packers.List.GetLengthInBytes(bytes, true);
+                withMarker.Should().Be(3);
+
+                var withoutMarker = Packers.List.GetLengthInBytes(bytes, false);
+                withoutMarker.Should().Be(2);
+            }
+
+            [Fact]
+            public void ReturnsRightSizeForTwoElements()
+            {
+                var bytes = new byte[] {0x92, 0x81, 0x61, 0x81, 0x62}; //a,b
+                var withMarker = Packers.List.GetLengthInBytes(bytes, true);
+                withMarker.Should().Be(5);
+
+                var withoutMarker = Packers.List.GetLengthInBytes(bytes, false);
+                withoutMarker.Should().Be(4);
+            }
+
+            [Fact]
+            public void ReturnsRightSizeForNestedLists()
+            {
+                var bytes = new byte[] {0x91, 0x91, 0x81, 0x61};
+                var withMarker = Packers.List.GetLengthInBytes(bytes, true);
+                withMarker.Should().Be(4);
+
+                var withoutMarker = Packers.List.GetLengthInBytes(bytes, false);
+                withoutMarker.Should().Be(3);
+            }
+
+            [Fact]
+            public void ReturnsRightSizeForNestedStructs()
+            {
+                var bytes = new byte[] {0x91, 0xB1, 0x70, 0x81, 0x61};
+                var withMarker = Packers.List.GetLengthInBytes(bytes, true);
+                withMarker.Should().Be(5);
+
+                var withoutMarker = Packers.List.GetLengthInBytes(bytes, false);
+                withoutMarker.Should().Be(4);
+            }
+
+            [Fact]
+            public void ReturnsRightSizeForNestedMaps()
+            {
+                var bytes = new byte[] {0x91, 0xA1, 0x61, 0x91}; //{a:1}
+                var withMarker = Packers.List.GetLengthInBytes(bytes, true);
+                withMarker.Should().Be(4);
+
+                var withoutMarker = Packers.List.GetLengthInBytes(bytes, false);
+                withoutMarker.Should().Be(3);
+            }
+
+            [Fact]
+            public void ReturnsRightSizeForNestedIntegers()
+            {
+                //CDS: try with bigger ints.
+                var bytes = new byte[] {0x91, 0x01};
+                var withMarker = Packers.List.GetLengthInBytes(bytes, true);
+                withMarker.Should().Be(2);
+
+                var withoutMarker = Packers.List.GetLengthInBytes(bytes, false);
+                withoutMarker.Should().Be(1);
+            }
+
+            [Fact]
+            public void ReturnsRightSizeForNestedFloat()
+            {
+                //1.1
+                var bytes = new byte[] {0x91, 0xC1, 0x3F, 0xF1, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9A};
+                var withMarker = Packers.List.GetLengthInBytes(bytes, true);
+                withMarker.Should().Be(10);
+
+                var withoutMarker = Packers.List.GetLengthInBytes(bytes, false);
+                withoutMarker.Should().Be(9);
+            }
+
+            [Fact]
+            public void ReturnsRightSizeForNestedBoolean()
+            {
+                //CDS: try with bigger ints.
+                var bytes = new byte[] {0x91, 0xC3};
+                var withMarker = Packers.List.GetLengthInBytes(bytes, true);
+                withMarker.Should().Be(2);
+
+                var withoutMarker = Packers.List.GetLengthInBytes(bytes, false);
+                withoutMarker.Should().Be(1);
+            }
+
+            [Fact]
+            public void ReturnsRightSizeForNestedNull()
+            {
+                //CDS: try with bigger ints.
+                var bytes = new byte[] {0x91, 0xC0};
+                var withMarker = Packers.List.GetLengthInBytes(bytes, true);
+                withMarker.Should().Be(2);
+
+                var withoutMarker = Packers.List.GetLengthInBytes(bytes, false);
+                withoutMarker.Should().Be(1);
+            }
+        }
     }
 }

@@ -7,6 +7,7 @@ namespace Neo4jNdpClient
         public byte[] Size { get; set; }
         public byte[] Content { get; set; }
         public byte[] Original { get; }
+        public int NumberOfItems { get; set; }
 
         public Packed() { }
 

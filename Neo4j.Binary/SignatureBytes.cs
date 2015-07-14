@@ -21,6 +21,15 @@ namespace Neo4jNdpClient
         Ignored = 0x7E,
 
         /// <summary>FAILURE &lt;metadata&gt;</summary>
-        Failure = 0x7F
+        Failure = 0x7F,
+
+        /// <summary>Represents 'N'</summary>
+        Node = 0x4E,
+
+        /// <summary>Represents 'R'</summary>
+        Relationship = 0x52,
+
+        /// <summary>Represents 'P'</summary>
+        Path = 0x50
     }
 }

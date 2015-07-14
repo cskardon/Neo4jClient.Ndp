@@ -160,5 +160,13 @@ namespace Neo4jNdpClient
                 return GetExpectedSize(content);
             }
         }
+
+        public static class Null
+        {
+            public static bool Is(byte[] content)
+            {
+                return content[0] == 0xC0;
+            }
+        }
     }
 }

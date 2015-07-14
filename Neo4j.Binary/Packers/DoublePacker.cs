@@ -51,6 +51,21 @@ namespace Neo4jNdpClient
 
                 return BitConverter.ToDouble(markerlessArry, 0);
             }
+
+            public static int GetExpectedSizeInBytes(byte[] content)
+            {
+                return 8;
+            }
+
+            public static int SizeOfMarkerInBytes(byte[] content)
+            {
+                return 1;
+            }
+
+            public static bool Is(byte[] content)
+            {
+                return content[0] == 0xC1;
+            }
         }
     }
 }

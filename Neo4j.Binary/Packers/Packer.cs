@@ -300,38 +300,6 @@ namespace Neo4jNdpClient
 
     public static class Packer
     {
-//        public static bool TryUnpack<T>(Packed content, out T unpacked) where T: new()
-//        {
-//            try
-//            {
-//                switch (content.PackType)
-//                {
-//                    
-////                        unpacked = Packers.Map.Unpack<T>(content.Original); break;
-//                    case PackType.Text:
-//                    case PackType.Map:    
-//                    case PackType.Integer:
-//                    case PackType.Float:
-//                    case PackType.List:
-//                        unpacked = new ListPacker<T>().Unpack(content.Original); break;
-//                    case PackType.Boolean:
-//
-//                    case PackType.Null:
-//
-//                case PackType.Structure:
-//                    case PackType.Unknown:
-//                    default:
-//                        throw new ArgumentOutOfRangeException();
-//                }
-//                return true;
-//            }
-//            catch
-//            {
-//                unpacked = default(T);
-//                return false;
-//            }
-//        }
-
         public static T Unpack<T>(byte[] content) where T : new()
         {
             var packedEntities = GetPackedEntities(content);
@@ -383,25 +351,37 @@ namespace Neo4jNdpClient
         public static Packed[] GetPackedEntities(byte[] content)
         {
             var editable = content;
-            int size;
-            var entityType = GetTypeAndSize(content, out size);
+            int size, numberOfItems;
+            var entityType = GetTypeAndSize(content, out size, out numberOfItems);
             var output = new List<Packed>();
             while (entityType != PackType.Unknown)
             {
-                output.Add(new Packed(editable.Take(size).ToArray()) {PackType = entityType});
+                output.Add(new Packed(editable.Take(size).ToArray()) {PackType = entityType, NumberOfItems = numberOfItems});
                 editable = editable.Skip(size).ToArray();
-                entityType = GetTypeAndSize(editable, out size);
+
+                entityType = GetTypeAndSize(editable, out size, out numberOfItems);
             }
             return output.ToArray();
         }
 
-        public static PackType GetTypeAndSize(byte[] content, out int size)
+        public static PackType GetTypeAndSize(byte[] content, out int size, out int numberOfItems)
         {
             var type = PackType.Unknown;
             size = -1;
+            numberOfItems = -1;
             if (content == null || content.Length == 0)
                 return type;
 
+            if (Packers.Double.Is(content))
+            {
+                type = PackType.Float;
+                size = Packers.Double.GetExpectedSizeInBytes(content);
+            }
+            if (Packers.Null.Is(content))
+            {
+                type = PackType.Null;
+                size = 1;
+            }
             if (Packers.Text.Is(content))
             {
                 type = PackType.Text;
@@ -434,6 +414,7 @@ namespace Neo4jNdpClient
             {
                 type = PackType.Structure;
                 size = content.Length;
+                numberOfItems = Packers.Struct.GetNumberOfItems(content);
             }
 
             return type;
@@ -509,7 +490,7 @@ namespace Neo4jNdpClient
 
         public static byte[] ConvertSizeToBytes(long length, int? size = null)
         {
-            var hexValue = length.ToString("X");
+            var hexValue = length.ToString("X2");
             if (hexValue.Length%2 != 0)
                 hexValue = hexValue.PadLeft(hexValue.Length + 1, '0');
 
@@ -532,6 +513,51 @@ namespace Neo4jNdpClient
         public static dynamic UnpackRecord(byte[] value, IEnumerable<string> fields)
         {
             return Packers.Map.UnpackRecord(value, fields);
+        }
+
+        public static int GetLengthOfFirstItem(byte[] content, bool includeMarker = true)
+        {
+            var packed = GetPackedEntities(content);
+            var first = packed.FirstOrDefault();
+            if (first == null)
+                return 0;
+
+            var markerSizeInBytes = 0;
+            var contentSizeInBytes = 0;
+            switch (first.PackType)
+            {
+                case PackType.Structure:
+                    markerSizeInBytes = Packers.Struct.GetExpectedSizeInBytes(content);
+                    break;
+                case PackType.Map:
+                    markerSizeInBytes = Packers.Map.SizeOfMarkerInBytes(content);
+                    contentSizeInBytes = Packers.Map.GetExpectedSizeInBytes(content);
+                    break;
+                case PackType.Text:
+                    markerSizeInBytes = Packers.Text.SizeOfMarkerInBytes(content);
+                    contentSizeInBytes = Packers.Text.GetExpectedSize(content);
+                    break;
+                case PackType.Integer:
+                    markerSizeInBytes = Packers.Int.SizeOfMarkerInBytes(content);
+                    contentSizeInBytes = Packers.Int.GetExpectedSizeInBytes(content);
+                    break;
+                case PackType.Float:
+                    markerSizeInBytes = Packers.Double.SizeOfMarkerInBytes(content);
+                    contentSizeInBytes = Packers.Double.GetExpectedSizeInBytes(content);
+                    break;
+                case PackType.List:
+                    contentSizeInBytes = Packers.List.GetLengthInBytes(content, true);
+                    break;
+                case PackType.Boolean:
+                case PackType.Null:
+                    contentSizeInBytes = 1;
+                    break;
+                case PackType.Unknown:
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+            return markerSizeInBytes + contentSizeInBytes;
         }
     }
 }

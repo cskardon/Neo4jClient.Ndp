@@ -1,27 +1,16 @@
-using System;
-using System.Collections.Generic;
-using System.Dynamic;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-
 namespace Neo4jNdpClient
 {
-    public enum Neo4jStructures
-    {
-        /// <summary>Represents 'N'</summary>
-        Node = 0x4E,
-        /// <summary>Represents 'R'</summary>
-        Relationship = 0x52,
-        /// <summary>Represents 'P'</summary>
-        Path = 0x50
-    }
+    using System;
+    using System.Collections.Generic;
+    using System.Dynamic;
+    using System.Linq;
+    using System.Net;
+    using System.Net.Sockets;
+    using System.Text;
 
-    public class Node
-    {
-        
-    }
+  
+
+   
 
     public class Neo4jNdpClient : IDisposable
     {
@@ -34,6 +23,23 @@ namespace Neo4jNdpClient
             _endPoint = new DnsEndPoint(uri.Host, uri.Port);
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         }
+
+//        private bool Init()
+//        {
+//            var content = GenerateInitMessage(UserAgent);
+//            Console.WriteLine(ToString(content, content.Length));
+//            _socket.Send(content);
+//
+//            byte[] data = new byte[1024];
+//            int received = _socket.Receive(data, 1024, SocketFlags.None);
+//
+//            var response = new Response<string>(data.Take(received).ToArray());
+//
+//            return response.Signature == 0x70;
+//        }
+
+
+        private static byte[] PullAllChunk => new byte[] {0x00, 0x02, 0xB0, 0x3F, 0x00, 0x00};
 
         public void Dispose()
         {
@@ -98,41 +104,29 @@ namespace Neo4jNdpClient
             return r.Signature == (int) SignatureBytes.Success;
         }
 
-//        private bool Init()
-//        {
-//            var content = GenerateInitMessage(UserAgent);
-//            Console.WriteLine(ToString(content, content.Length));
-//            _socket.Send(content);
-//
-//            byte[] data = new byte[1024];
-//            int received = _socket.Receive(data, 1024, SocketFlags.None);
-//
-//            var response = new Response<string>(data.Take(received).ToArray());
-//
-//            return response.Signature == 0x70;
-//        }
-
-        
-
-        private static byte[] PullAllChunk => new byte[] {0x00, 0x02, 0xB0, 0x3F, 0x00, 0x00};
-
-
         public IEnumerable<Neo4jRecord> ExecuteCypher(string cypher, dynamic parameters = null)
         {
             var request = new Request<Query>(SignatureBytes.Run, new Query {Cypher = cypher, Parameters = parameters});
             var chunks = request.GetChunks().First();
-            //Console.WriteLine(ToString(chunks, chunks.Length));
             
-
             var allChunk = new List<byte>(chunks);
             allChunk.AddRange(PullAllChunk);
-//            Console.WriteLine(ToString(allChunk.ToArray(), allChunk.Count));
             _socket.Send(allChunk.ToArray());
 
             var buffer = new byte[1024];
-            var read = _socket.Receive(buffer, 0, 1024, SocketFlags.Partial);
+            var read = _socket.Receive(buffer, 0, 1024, SocketFlags.None);
             var r = new Response<string>(buffer.Take(read).ToArray());
-//            Console.WriteLine(ToString(r.Chunks[0].Content));
+            while (!r.AllChunksReceived)
+            {
+                read = _socket.Receive(buffer, 0, 1024, SocketFlags.None);
+                r.AddChunk(buffer.Take(read).ToArray());
+                if (read == 0)
+                    break;
+            }
+
+            if(!r.AllChunksReceived)
+                throw new InvalidOperationException("Missing ending.");
+
             var structs = GetStructs(r.Chunks);
 
             if (structs[0].SignatureByte != SignatureBytes.Success)
@@ -144,33 +138,25 @@ namespace Neo4jNdpClient
             var fieldData = GetMetaData<Dictionary<string, IEnumerable<string>>>(structs[0]);
             if (!fieldData["fields"].Any())
             {
-//                Console.WriteLine("No results to read.");
                 return null;
             }
 
 
             var records = new List<Neo4jRecord>();
-            for (int i = 1; i < structs.Count; i++)
+            for (var i = 1; i < structs.Count; i++)
             {
                 var s = structs[i];
                 if (s.SignatureByte == SignatureBytes.Record)
                 {
-                    var record = new Neo4jRecord(fieldData["fields"]) {Packed = s.ContentWithoutStructAndSignature };
+                    var record = new Neo4jRecord(fieldData["fields"]) {Packed = s.ContentWithoutStructAndSignature};
                     records.Add(record);
                 }
                 if (s.SignatureByte == SignatureBytes.Success)
                 {
-//                    Console.WriteLine("Finished reading from N4j");
-                    //End of records
+
                 }
             }
             return records;
-//            Console.WriteLine("Results");
-//            foreach (var record in records)
-//            {
-//                Console.WriteLine("RECORD:");
-//                Console.WriteLine(DynamicToString(record.Unpacked, 1));
-//            }
         }
 
         private static string DynamicToString(dynamic d, int numberOfTabs = 0)
@@ -187,16 +173,14 @@ namespace Neo4jNdpClient
             return output.ToString();
         }
 
-        
-
-        public T GetMetaData<T>(Neo4jStruct s) where T: class,new()
+        public T GetMetaData<T>(Neo4jStruct s) where T : class, new()
         {
-            if(s.NumberOfFields == 0)
+            if (s.NumberOfFields == 0)
                 return null;
 
             //Get actual data
             var response = Packer.Unpack<T>(s.ContentWithoutStructAndSignature);
-            return (T) response;
+            return response;
         }
 
         public IList<Neo4jStruct> GetStructs(IList<Chunk> chunks)

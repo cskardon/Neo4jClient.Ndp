@@ -91,5 +91,10 @@ namespace Neo4j.Binary.Tests
                 actual.Should().Be(expected);
             }
         }
+
+        public class GetSizeInBytesMethod
+        {
+            
+        }
     }
 }
