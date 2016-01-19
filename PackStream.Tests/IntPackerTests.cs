@@ -1,7 +1,7 @@
 ﻿namespace Neo4j.Binary.Tests
 {
     using FluentAssertions;
-    using Neo4jNdpClient;
+    using Neo4jBoltClient;
     using Xunit;
 
     public class IntPackerTests

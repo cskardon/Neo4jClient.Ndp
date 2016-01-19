@@ -3,7 +3,7 @@
     using System.Collections.Generic;
     using System.Linq;
     using FluentAssertions;
-    using Neo4jNdpClient;
+    using Neo4jBoltClient;
     using Xunit;
 
     public class ListPackerTests

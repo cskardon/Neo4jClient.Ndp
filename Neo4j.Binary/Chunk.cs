@@ -1,4 +1,4 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System.Linq;
 
@@ -32,4 +32,5 @@ namespace Neo4jNdpClient
             return false;
         }
     }
+
 }

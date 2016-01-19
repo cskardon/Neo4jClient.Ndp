@@ -1,10 +1,11 @@
 using System;
 
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
+    using Neo4j.Binary;
 
     /*
      Integers
@@ -47,6 +48,8 @@ namespace Neo4jNdpClient
 
     public static partial class Packers
     {
+        private static IBitConverter BitConverter => new BigEndianTargetBitConverter();
+
         public static class Int
         {
             public static bool Is(byte[] content)
@@ -148,14 +151,7 @@ namespace Neo4jNdpClient
 
             internal static byte[] ConvertLongToBytes(long value)
             {
-                var hexValue = value.ToString("X");
-                if (hexValue.Length % 2 != 0)
-                    hexValue = hexValue.PadLeft(hexValue.Length + 1, '0');
-
-                var output = new List<byte>();
-                for (int i = 0; i < hexValue.Length; i += 2)
-                    output.Add((byte)int.Parse(hexValue.Substring(i, 2), NumberStyles.HexNumber));
-
+                var output = new List<byte>(BitConverter.GetBytes(value));
                 return value >= 0 ? ConvertPositiveLongs(output, value) : ConvertNegativeLongs(output, value);
             }
 
@@ -170,21 +166,21 @@ namespace Neo4jNdpClient
 
             public static long Unpack(byte[] content)
             {
-                var hexString = BitConverter.ToString(content).Replace("-", "");
                 if (content.Length == 1 && content[0] <= 0xFF)
-                    return Convert.ToSByte(hexString, 16);
+                    return (sbyte) content[0];
 
+                var toInterpret = content.Skip(1).ToArray();
                 switch (content[0])
                 {
-                    //skip 2 as it's 0x##
+//                    //skip 2 as it's 0x##
                     case 0xC8:
-                        return Convert.ToSByte(hexString.Substring(2), 16);
+                        return (sbyte) toInterpret[0];
                     case 0xC9:
-                        return Convert.ToInt16(hexString.Substring(2), 16);
+                        return BitConverter.ToInt16(toInterpret);
                     case 0xCA:
-                        return Convert.ToInt32(hexString.Substring(2), 16);
+                        return BitConverter.ToInt32(toInterpret);
                     case 0xCB:
-                        return Convert.ToInt64(hexString.Substring(2), 16);
+                        return BitConverter.ToInt64(toInterpret);
                     default:
                         throw new ArgumentOutOfRangeException(nameof(content), content[0], "Unknown Marker");
                 }

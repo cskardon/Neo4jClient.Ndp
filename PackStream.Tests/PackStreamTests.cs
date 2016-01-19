@@ -1,23 +1,21 @@
-﻿using System.Collections.Generic;
-
-namespace Neo4j.Binary.Tests
+﻿namespace Neo4j.Binary.Tests
 {
-    using System;
+    using System.Collections.Generic;
     using System.Linq;
     using FluentAssertions;
-    using Neo4jNdpClient;
+    using Neo4jBoltClient;
     using Xunit;
 
-    public partial class PackerTests
+    public partial class PackStreamTests
     {
         public class ConvertSizeToBytesMethod
         {
             [Theory]
-            [InlineData(0, 2, new byte[] { 0x00, 0x00 })]
-            [InlineData(1, 2, new byte[] { 0x00, 0x01 })]
+            [InlineData(0, 2, new byte[] {0x00, 0x00})]
+            [InlineData(1, 2, new byte[] {0x00, 0x01})]
             public void PadsPositiveNumbersCorrectly(int value, int padding, byte[] expected)
             {
-                var actual = Packer.ConvertSizeToBytes(value, 2);
+                var actual = PackStream.ConvertSizeToBytes(value, 2);
                 actual.Should().Equal(expected);
             }
         }
@@ -27,10 +25,10 @@ namespace Neo4j.Binary.Tests
             [Fact]
             public void UnpacksSuccessMetaDataProperlyAsString()
             {
-                var bytes = new byte[] { 0xA1, 0x86, 0x66, 0x69, 0x65, 0x6C, 0x64, 0x73, 0x91, 0x81, 0x78 };
-                var expected = new Dictionary<string, IEnumerable<string>> { { "fields", new List<string> { "x" } } };
+                var bytes = new byte[] {0xA1, 0x86, 0x66, 0x69, 0x65, 0x6C, 0x64, 0x73, 0x91, 0x81, 0x78};
+                var expected = new Dictionary<string, IEnumerable<string>> {{"fields", new List<string> {"x"}}};
 
-                var actual = Packer.Unpack<Dictionary<string, IEnumerable<string>>>(bytes);
+                var actual = PackStream.Unpack<Dictionary<string, IEnumerable<string>>>(bytes);
 
                 foreach (var kvp in expected)
                 {
@@ -46,10 +44,10 @@ namespace Neo4j.Binary.Tests
             [Fact]
             public void ShouldUnpackCorrectly_UsingDynamic()
             {
-                var fields = new [] {"Name", "Year"};
-                var input = new byte[] { 0x92, 0x8B, 0x43, 0x6C, 0x6F, 0x75, 0x64, 0x20, 0x41, 0x74, 0x6C, 0x61, 0x73, 0xC9, 0x07, 0xDC }; //Cloud Atlas | 2012
+                var fields = new[] {"Name", "Year"};
+                var input = new byte[] {0x92, 0x8B, 0x43, 0x6C, 0x6F, 0x75, 0x64, 0x20, 0x41, 0x74, 0x6C, 0x61, 0x73, 0xC9, 0x07, 0xDC}; //Cloud Atlas | 2012
 
-                var actual = Packer.UnpackRecord(input, fields);
+                var actual = PackStream.UnpackRecord(input, fields);
                 Assert.Equal(actual.Name, "Cloud Atlas");
                 Assert.Equal(actual.Year, 2012);
             }
@@ -64,7 +62,7 @@ namespace Neo4j.Binary.Tests
             {
                 var s = new string('a', size);
 
-                var packed = Packer.Pack(s);
+                var packed = PackStream.Pack(s);
                 packed.Take(1).ToArray().Should().Equal(expected);
             }
 
@@ -74,7 +72,7 @@ namespace Neo4j.Binary.Tests
             {
                 var s = new string('a', size);
 
-                var packed = Packer.Pack(s);
+                var packed = PackStream.Pack(s);
                 packed.Take(2).ToArray().Should().Equal(expected);
             }
 
@@ -85,7 +83,7 @@ namespace Neo4j.Binary.Tests
             {
                 var s = new string('a', size);
 
-                var packed = Packer.Pack(s);
+                var packed = PackStream.Pack(s);
                 packed.Take(3).ToArray().Should().Equal(expected, size.ToString("X"));
             }
         }

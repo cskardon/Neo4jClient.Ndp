@@ -1,4 +1,4 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System.Collections.Generic;
     using System.Linq;
@@ -11,7 +11,7 @@ namespace Neo4jNdpClient
             byte[] editedBytes;
             Id = GetId(bytes, out editedBytes);
             Labels = GetLabels(editedBytes, out editedBytes);
-            Data = Packer.Unpack<T>(editedBytes);
+            Data = PackStream.Unpack<T>(editedBytes);
         }
 
         private static IEnumerable<string> GetLabels(byte[] bytes, out byte[] editedBytes)

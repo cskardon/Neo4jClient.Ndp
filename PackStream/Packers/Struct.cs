@@ -1,16 +1,18 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
 
-    public class Neo4jStruct
+    public class Struct
     {
         public byte[] OriginalBytes { get; }
         private int _numberOfFields;
-
-        public Neo4jStruct(byte[] originalBytes)
+        public Struct() { }
+        public Struct(byte[] originalBytes)
         {
             OriginalBytes = originalBytes;
+            SignatureByte = (SignatureBytes) originalBytes[1];
         }
 
         public int NumberOfFields
@@ -42,6 +44,17 @@ namespace Neo4jNdpClient
                 throw new InvalidOperationException("The data is not a node.");
 
             return new Node<T>(ContentWithoutStructAndSignature);
+        }
+
+
+        private static IDictionary<string, IEnumerable<string>> GetMetaData(Struct s) 
+        {
+            if (s.NumberOfFields == 0)
+                return null;
+
+            //Get actual data
+            var response = PackStream.Unpack<Dictionary<string, IEnumerable<string>>>(s.ContentWithoutStructAndSignature);
+            return response;
         }
 
         public override string ToString()

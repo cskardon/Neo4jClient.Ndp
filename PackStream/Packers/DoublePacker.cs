@@ -1,4 +1,4 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System;
     using System.Collections.Generic;
@@ -35,21 +35,14 @@ namespace Neo4jNdpClient
             public static byte[] Pack(double content)
             {
                 var output = new List<byte> {Marker};
-                var bytes = BitConverter.GetBytes(content);
-                if (BitConverter.IsLittleEndian)
-                    Array.Reverse(bytes);
-
-                output.AddRange(bytes);
+                output.AddRange(BitConverter.GetBytes(content));
                 return output.ToArray();
             }
 
             public static double Unpack(byte[] content)
             {
                 var markerlessArry = content[0] == Marker ? content.Skip(1).ToArray() : content;
-                if (BitConverter.IsLittleEndian)
-                    Array.Reverse(markerlessArry);
-
-                return BitConverter.ToDouble(markerlessArry, 0);
+                return BitConverter.ToDouble(markerlessArry);
             }
 
             public static int GetExpectedSizeInBytes(byte[] content)

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using FluentAssertions;
-using Neo4jNdpClient;
+using Neo4jBoltClient;
 using Xunit;
 
 namespace Neo4j.Binary.Tests
@@ -28,9 +28,9 @@ namespace Neo4j.Binary.Tests
             private bool B { get; set; }
         }
 
-        private class SimpleClassWithNdpIgnoredProperty : SimpleClass
+        private class SimpleClassWithBoltIgnoredProperty : SimpleClass
         {
-            [NdpIgnore]
+            [BoltIgnore]
             public bool B { get; set; }
         }
 
@@ -70,20 +70,9 @@ namespace Neo4j.Binary.Tests
             }
 
             [Fact]
-            public void PacksDefinedClassCorrectlyIgnoringPrivateProperties()
+            public void PacksDefinedClassCorrectlyIgnoringBoltIgnoredProperties()
             {
-                var toPack = new SimpleClassWithPrivateProperty {A = true};
-                var expected = new List<byte> {0xA1, 0x81, 0x41, (byte) Markers.True}; //1 fields
-
-
-                var actual = Packers.Map.Pack(toPack);
-                actual.Should().Equal(expected);
-            }
-
-            [Fact]
-            public void PacksDefinedClassCorrectlyIgnoringNdpIgnoredProperties()
-            {
-                var toPack = new SimpleClassWithNdpIgnoredProperty {A = true};
+                var toPack = new SimpleClassWithBoltIgnoredProperty {A = true};
                 var expected = new List<byte> {0xA1, 0x81, 0x41, (byte) Markers.True}; //1 fields
 
 
@@ -144,13 +133,13 @@ namespace Neo4j.Binary.Tests
             }
 
             [Fact]
-            public void UnpPacksDefinedClassCorrectlyIgnoringNdpIgnoredProperties()
+            public void UnpPacksDefinedClassCorrectlyIgnoringBoltIgnoredProperties()
             {
-                var expected = new SimpleClassWithNdpIgnoredProperty {A = true};
+                var expected = new SimpleClassWithBoltIgnoredProperty {A = true};
                 var toUnpack = new List<byte> {0xA1, 0x81, 0x41, (byte) Markers.True}.ToArray(); //1 fields
 
 
-                var actual = Packers.Map.Unpack<SimpleClassWithNdpIgnoredProperty>(toUnpack);
+                var actual = Packers.Map.Unpack<SimpleClassWithBoltIgnoredProperty>(toUnpack);
                 actual.ShouldBeEquivalentTo(expected);
             }
 

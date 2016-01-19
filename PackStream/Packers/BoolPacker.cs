@@ -1,4 +1,4 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System;
 

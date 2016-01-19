@@ -1,4 +1,4 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System;
     using System.Collections;
@@ -6,6 +6,7 @@ namespace Neo4jNdpClient
     using System.Globalization;
     using System.Linq;
     using System.Reflection;
+    using Neo4j.Binary.Extensions;
 
     /*
     
@@ -59,7 +60,7 @@ namespace Neo4jNdpClient
 
             public static byte[] PackwithType(dynamic content, Type genericType)
             {
-                var method = typeof (List).GetMethod("Pack", BindingFlags.Static | BindingFlags.Public);
+                var method = typeof (List).GetTypeInfo().GetDeclaredMethod("Pack");
                 var genericMethod = method.MakeGenericMethod(genericType);
                 var list = genericMethod.Invoke(null, new object[] {content});
                 return (byte[]) list;
@@ -67,16 +68,19 @@ namespace Neo4jNdpClient
 
             public static bool IsEnumerable(Type type, out Type genericParameter)
             {
+//                throw new NotImplementedException();
                 genericParameter = null;
                 if (type == typeof (string))
                     return false;
 
-                var isEnumerable = type.GetInterface("IEnumerable", true) != null;
+                var typeInfo = type.GetTypeInfo();
+                var isEnumerable = typeInfo.ImplementedInterfaces.Contains(typeof(IEnumerable));
                 if (!isEnumerable)
                     return false;
 
-                if (type.IsGenericType)
-                    genericParameter = type.GetGenericArguments()[0];
+                var genericArgs = typeInfo.GenericTypeArguments;
+                if (!genericArgs.IsNullOrEmpty())
+                    genericParameter = genericArgs[0];
 
                 return true;
             }
@@ -90,7 +94,7 @@ namespace Neo4jNdpClient
                 output.AddRange(GetMarker(contentAsList.Count));
 
                 for (var i = 0; i < contentAsList.Count; i++)
-                    output.AddRange(Packer.Pack(contentAsList[i]));
+                    output.AddRange(PackStream.Pack(contentAsList[i]));
 
                 return output.ToArray();
             }
@@ -129,7 +133,7 @@ namespace Neo4jNdpClient
                 if (itemsInList > uint.MaxValue)
                     throw new ArgumentOutOfRangeException(nameof(itemsInList), itemsInList, "Too many items in the list!");
 
-                output.AddRange(Packer.ConvertSizeToBytes(itemsInList));
+                output.AddRange(PackStream.ConvertSizeToBytes(itemsInList));
                 return output.ToArray();
             }
             private static int GetSizeOfMarkerInBytes(long numberOfElements)
@@ -153,7 +157,7 @@ namespace Neo4jNdpClient
                 var numberOfElements = GetNumberOfElements(content);
                 var bytesToSkip = GetSizeOfMarkerInBytes(numberOfElements);
 
-                var unpacked = Packer.Unpack(content.Skip(bytesToSkip).ToArray());
+                var unpacked = PackStream.Unpack(content.Skip(bytesToSkip).ToArray());
                 return unpacked.Cast<T>();
             }
 
@@ -169,7 +173,7 @@ namespace Neo4jNdpClient
 
                 for (int i = 0; i < numberOfElements; i++)
                 {
-                    var itemLength = Packer.GetLengthOfFirstItem(bytesWithoutMarker);
+                    var itemLength = PackStream.GetLengthOfFirstItem(bytesWithoutMarker);
                     bytesWithoutMarker = bytesWithoutMarker.Skip(itemLength).ToArray();
                     length += itemLength;
                 }

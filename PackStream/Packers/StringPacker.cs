@@ -1,4 +1,4 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System;
     using System.CodeDom;
@@ -61,7 +61,7 @@ namespace Neo4jNdpClient
             public static string Unpack(byte[] content)
             {
                 var markerLess = RemoveMarker(content);
-                var decoded = Encoding.UTF8.GetString(markerLess);
+                var decoded = Encoding.UTF8.GetString(markerLess, 0, markerLess.Length);
                 return decoded;
             }
 
@@ -83,7 +83,7 @@ namespace Neo4jNdpClient
                 if (size > uint.MaxValue)
                     throw new ArgumentOutOfRangeException(nameof(size), size, "Size given is too big.");
 
-                output.AddRange(Packer.GetLength(size));
+                output.AddRange(PackStream.GetLength(size));
                 return output.ToArray();
             }
 
@@ -131,12 +131,12 @@ namespace Neo4jNdpClient
                 if (content[0] == 0xD1)
                 {
                     var markerSize = content.Skip(1).Take(2).ToArray();
-                    return int.Parse(BitConverter.ToString(markerSize).Replace("-", ""), NumberStyles.HexNumber);
+                    return (ushort) BitConverter.ToInt16(markerSize);
                 }
                 if (content[0] == 0xD2)
                 {
                     var markerSize = content.Skip(1).Take(4).ToArray();
-                    return int.Parse(BitConverter.ToString(markerSize).Replace("-", ""), NumberStyles.HexNumber);
+                    return  BitConverter.ToInt32(markerSize);
                 }
                 throw new ArgumentOutOfRangeException(nameof(content), content[0], "Unknown Marker");
             }

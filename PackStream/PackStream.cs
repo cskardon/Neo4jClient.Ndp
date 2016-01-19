@@ -1,4 +1,4 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System;
     using System.Collections.Generic;
@@ -298,13 +298,13 @@ namespace Neo4jNdpClient
         Null
     }
 
-    public static class Packer
+    public static class PackStream
     {
         public static T Unpack<T>(byte[] content) where T : new()
         {
             var packedEntities = GetPackedEntities(content);
             if (packedEntities.Length != 1)
-                throw new ArgumentException("Too many / or no entities", nameof(content));
+                throw new ArgumentException((packedEntities.Length > 1) ? "Too many entities" :"No entities supplied", nameof(content));
 
             var entity = packedEntities.First();
             switch (entity.PackType)
@@ -439,10 +439,7 @@ namespace Neo4jNdpClient
             var underlyingType = Nullable.GetUnderlyingType(toPack.GetType()) ?? toPack.GetType();
 
             byte[] output;
-            if (underlyingType == typeof (Query))
-                output = PackQuery(toPack as Query);
-
-            else if (underlyingType == typeof (bool))
+            if (underlyingType == typeof (bool))
                 output = Packers.Bool.Pack(Convert.ToBoolean(toPack));
 
             else if (underlyingType == typeof (string))
@@ -471,22 +468,6 @@ namespace Neo4jNdpClient
             return output;
         }
 
-        private static byte[] PackQuery(Query query)
-        {
-            var output = new List<byte>();
-
-            output.AddRange(Pack(query.Cypher));
-            if (query.Parameters == null)
-                output.AddRange(new byte[] {0xA0});
-            else
-            {
-                var parameters = Packers.Map.Pack(query.Parameters);
-                output.AddRange(parameters);
-            }
-
-
-            return output.ToArray();
-        }
 
         public static byte[] ConvertSizeToBytes(long length, int? size = null)
         {

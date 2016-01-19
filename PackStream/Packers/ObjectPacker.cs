@@ -6,7 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     /*
             Maps
@@ -60,11 +60,14 @@ namespace Neo4jNdpClient
 
             private static byte[] PackObject<T>(T content)
             {
-                var fields = content.GetType().GetFields(BindingFlags.Public)
-                    .Where(field => !Attribute.IsDefined(field, typeof (NdpIgnoreAttribute))).ToList();
+                var typeInfo = content.GetType().GetTypeInfo();
+                var fields = typeInfo.DeclaredFields
+                    .Where(f => f.IsPublic && !f.IsDefined( typeof (BoltIgnoreAttribute)))
+                    .ToList();
 
-                var properties = content.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                    .Where(prop => !Attribute.IsDefined(prop, typeof (NdpIgnoreAttribute))).ToList();
+                //TODO this will serialize it all!!!! -- only want public instance properties but doesn't get base properties
+                var properties = content.GetType().GetRuntimeProperties()
+                    .Where(prop => !prop.IsDefined(typeof (BoltIgnoreAttribute))).ToList();
 
                 var dictionary = fields.ToDictionary(field => field.Name, field => field.GetValue(content));
                 foreach (var prop in properties)
@@ -92,13 +95,13 @@ namespace Neo4jNdpClient
                 if (fields > uint.MaxValue)
                     throw new ArgumentOutOfRangeException(nameof(fields), "Too many fields defined!");
 
-                output.AddRange(Packer.GetLength(fields));
+                output.AddRange(PackStream.GetLength(fields));
                 return output.ToArray();
             }
 
             private static byte[] PackDictionary(IDictionary content)
             {
-                var arguments = content.GetType().GetGenericArguments();
+                var arguments = content.GetType().GenericTypeArguments;
                 var keyType = arguments[0];
                 var valueType = arguments[1];
 
@@ -107,9 +110,9 @@ namespace Neo4jNdpClient
 
                 foreach (var item in content.Keys)
                 {
-                    var keyBytes = Packer.Pack(Convert.ChangeType(item, keyType));
+                    var keyBytes = PackStream.Pack(Convert.ChangeType(item, keyType));
                     bytes.AddRange(keyBytes);
-                    bytes.AddRange(Packer.Pack(Convert.ChangeType(content[item], valueType)));
+                    bytes.AddRange(PackStream.Pack(Convert.ChangeType(content[item], valueType)));
                 }
 
                 return bytes.ToArray();
@@ -125,17 +128,17 @@ namespace Neo4jNdpClient
                 if (numberOfPairs == 0)
                     return output;
 
-                var packed = Packer.GetPackedEntities(markerLess);
+                var packed = PackStream.GetPackedEntities(markerLess);
 
                 for (var i = 0; i < packed.Length; i += 2)
                 {
-                    var key = Packer.Unpack(packed[i]);
-                    var value = Packer.Unpack(packed[i + 1]);
+                    var key = PackStream.Unpack(packed[i]);
+                    var value = PackStream.Unpack(packed[i + 1]);
                     Type genericType;
                     if (Packers.List.IsEnumerable(typeof (TValue), out genericType))
                     {
                         
-                        var method = typeof(Packers.List).GetMethod("Unpack", BindingFlags.Static | BindingFlags.Public);
+                        var method = typeof(Packers.List).GetTypeInfo().GetDeclaredMethod("Unpack");
                         var genericMethod = method.MakeGenericMethod(genericType);
                         var list = genericMethod.Invoke(null, new object[] {packed[i + 1].Original}) as IEnumerable;
                         value = (TValue) list;
@@ -197,13 +200,13 @@ namespace Neo4jNdpClient
                 where T : new()
             {
                 var tType = typeof (T);
-                var isDict = tType.IsGenericType && tType.GetGenericTypeDefinition() == typeof (Dictionary<,>);
+                var isDict = tType.GetTypeInfo().IsGenericType && tType.GetGenericTypeDefinition() == typeof (Dictionary<,>);
                 if (isDict)
                 {
-                    var key = tType.GetGenericArguments()[0];
-                    var value = tType.GetGenericArguments()[1];
+                    var key = tType.GenericTypeArguments[0];
+                    var value = tType.GenericTypeArguments[1];
 
-                    var method = typeof (Map).GetMethod("UnpackDictionary", BindingFlags.NonPublic | BindingFlags.Static);
+                    var method = typeof (Map).GetTypeInfo().GetDeclaredMethod("UnpackDictionary");
                     var generic = method.MakeGenericMethod(key, value);
                     var dict = generic.Invoke(null, new object[] {content}) as IDictionary;
 
@@ -261,14 +264,15 @@ namespace Neo4jNdpClient
             {
                 var obj = new T();
                 var type = obj.GetType();
-                var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(prop => !Attribute.IsDefined(prop, typeof (NdpIgnoreAttribute)));
+
+                //TODO: Getting static and private properties!!!
+                var properties = type.GetRuntimeProperties()
+                    .Where(prop => !prop.IsDefined(typeof (BoltIgnoreAttribute)));
                 foreach (var property in properties)
                     if (toConvert.ContainsKey(property.Name))
                         property.SetValue(obj, (object) toConvert[property.Name]);
 
-                var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(prop => !Attribute.IsDefined(prop, typeof (NdpIgnoreAttribute)));
+                var fields = type.GetTypeInfo().DeclaredFields.Where(field => field.IsPublic && !field.IsDefined(typeof (BoltIgnoreAttribute)));
                 foreach (var field in fields)
                     if (toConvert.ContainsKey(field.Name))
                         field.SetValue(obj, (object) toConvert[field.Name]);
@@ -288,7 +292,7 @@ namespace Neo4jNdpClient
 
                 for (int i = 0; i < numberOfElements; i++)
                 {
-                    var itemLength = Packer.GetLengthOfFirstItem(bytesWithoutMarker);
+                    var itemLength = PackStream.GetLengthOfFirstItem(bytesWithoutMarker);
                     bytesWithoutMarker = bytesWithoutMarker.Skip(itemLength).ToArray();
                     length += itemLength;
                 }

@@ -1,4 +1,4 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System;
     using System.Collections.Generic;
@@ -12,7 +12,7 @@ namespace Neo4jNdpClient
         {
             var output = new List<byte>();
 
-            output.AddRange(Packer.Pack(Cypher));
+            output.AddRange(PackStream.Pack(Cypher));
             if (Parameters == null)
             {
                 output.AddRange(new byte[] { 0xA0 });

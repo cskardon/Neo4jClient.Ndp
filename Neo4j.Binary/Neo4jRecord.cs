@@ -1,4 +1,4 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System.Collections.Generic;
     using System.Linq;
@@ -9,11 +9,11 @@ namespace Neo4jNdpClient
 
         public byte[] Packed { get; set; }
 
-        public dynamic Unpacked => Packer.UnpackRecord(Packed, Fields);
+        public dynamic Unpacked => PackStream.UnpackRecord(Packed, Fields);
 
         public IEnumerable<Node<T>> As<T>() where T : new()
         {
-            var structs = Packers.List.Unpack<Neo4jStruct>(Packed);
+            var structs = Packers.List.Unpack<Struct>(Packed);
             return structs.Select(neo4JStruct => neo4JStruct.GetNode<T>()).ToList();
         }
 

@@ -1,7 +1,8 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System;
     using System.Collections.Generic;
+    using System.Reflection;
 
     public class Request<T>
     {
@@ -18,7 +19,7 @@ namespace Neo4jNdpClient
 
         private static byte GetStructSize()
         {
-            if (typeof(T).IsPrimitive || typeof(T) == typeof(string))
+            if (typeof(T).GetTypeInfo().IsPrimitive || typeof(T) == typeof(string))
                 return 0xB1;
 
             if (typeof (T) == typeof (Query))
@@ -31,7 +32,12 @@ namespace Neo4jNdpClient
 
         private static byte[] GenerateChunkHeader(int length)
         {
-            return Packer.ConvertSizeToBytes(length, 2);
+            return PackStream.ConvertSizeToBytes(length, 2);
+        }
+
+        public byte[] GetBytes()
+        {
+            return PackStream.Pack(Content);
         }
 
         public ICollection<byte[]> GetChunks(int chunkSize = 65535, bool includeZeroEnding = true)
@@ -42,7 +48,7 @@ namespace Neo4jNdpClient
             var fullMessage = new List<byte>();
             fullMessage.Add(GetStructSize());
             fullMessage.Add((byte)Signature);
-            var packed = Packer.Pack(Content);
+            var packed = PackStream.Pack(Content);
             fullMessage.AddRange(packed);
             
             var header = GenerateChunkHeader(fullMessage.Count);

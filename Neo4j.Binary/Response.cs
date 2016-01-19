@@ -1,6 +1,5 @@
-using System.Security.Cryptography.X509Certificates;
 
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System;
     using System.Collections.Generic;

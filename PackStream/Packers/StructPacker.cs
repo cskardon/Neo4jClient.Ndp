@@ -1,4 +1,4 @@
-namespace Neo4jNdpClient
+namespace Neo4jBoltClient
 {
     using System;
     using System.Globalization;
@@ -79,12 +79,12 @@ namespace Neo4jNdpClient
                 return (content[0] >= 0xB0 && content[0] <= 0xBF) || content[0] == 0xDC || content[0] == 0xDD;
             }
 
-            public static Neo4jStruct Unpack(byte[] content)
+            public static Neo4jBoltClient.Struct Unpack(byte[] content)
             {
                 if (!IsStruct(content))
                     throw new ArgumentException("Content doesn't represent a Struct.", nameof(content));
 
-                var output = new Neo4jStruct(content);
+                var output = new Neo4jBoltClient.Struct(content);
                 output.NumberOfFields = GetNumberOfFields(content);
                 output.SignatureByte = GetSignatureByte(content, output.NumberOfFields);
 
@@ -130,7 +130,7 @@ namespace Neo4jNdpClient
 
                 for (int i = 0; i < numberOfElements; i++)
                 {
-                    var itemLength = Packer.GetLengthOfFirstItem(bytesWithoutMarker);
+                    var itemLength = PackStream.GetLengthOfFirstItem(bytesWithoutMarker);
                     bytesWithoutMarker = bytesWithoutMarker.Skip(itemLength).ToArray();
                     length += itemLength;
                 }
